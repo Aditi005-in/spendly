@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spendly - Dashboard</title>
+
+    <!-- Bootstrap & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        .stat-card {
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .empty-box {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+
+    <!-- ================= NAVBAR ================= -->
+    <nav class="navbar navbar-dark bg-primary px-4">
+        <a class="navbar-brand fw-bold">
+            <i class="fas fa-wallet me-2"></i>Spendly
+        </a>
+
+        <span class="text-white">
+            👋 Hi {{ user_name | default("there") }}, let’s track your spending smartly
+        </span>
+    </nav>
+
+    <div class="container-fluid p-4">
+
+        <!-- ================= WELCOME MESSAGE ================= -->
+        {% if is_new_user %}
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+            <span>👋 Welcome to Spendly! Start by adding your first expense.</span>
+            <a href="{{ url_for('expense.add_expense') }}" class="btn btn-success btn-sm">
+                ➕ Add Expense
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- ================= SUMMARY CARDS ================= -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card bg-primary text-white">
+                    <div class="card-body">
+                        <h6>Total Spent</h6>
+                        <h3>₹{{ total_spent | default(0) }}</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card stat-card bg-success text-white">
+                    <div class="card-body">
+                        <h6>Today</h6>
+                        <h3>₹{{ today_spent | default(0) }}</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card stat-card bg-warning text-dark">
+                    <div class="card-body">
+                        <h6>Average</h6>
+                        <h3>₹{{ weekly_avg | default(0) }}</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card stat-card bg-danger text-white">
+                    <div class="card-body">
+                        <h6>Transactions</h6>
+                        <h3>{{ total_transactions | default(0) }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MAIN ROW ================= -->
+        <div class="row g-4">
+
+            <!-- ========== LEFT (CHARTS) ========== -->
+            <div class="col-lg-8">
+
+                <!-- CATEGORY CHART -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5>Expense by Category</h5>
+
+                        {% if category_data %}
+                        <canvas id="categoryChart"></canvas>
+                        {% else %}
+                        <div class="empty-box">
+                            <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                            <p>No expense data yet</p>
+                            <a href="{{ url_for('expense.add_expense') }}" class="btn btn-success btn-sm mt-2">
+                                ➕ Add your first expense
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- TREND CHART -->
+                <div class="card">
+                    <div class="card-body">
+                        <h5>Spending Trend</h5>
+
+                        {% if trend_data %}
+                        <canvas id="trendChart"></canvas>
+                        {% else %}
+                        <div class="empty-box">
+                            <i class="fas fa-chart-line fa-3x mb-3"></i>
+                            <p>No trend data available</p>
+                            <a href="{{ url_for('expense.add_expense') }}" class="btn btn-success btn-sm mt-2">
+                                ➕ Add expense to see trends
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== RIGHT SIDEBAR ========== -->
+            <div class="col-lg-4">
+
+                <!-- BUDGET -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h6>Budget Status</h6>
+
+                        {% if budget %}
+                        <p>Budget: ₹{{ budget }}</p>
+                        <p>Spent: ₹{{ budget_spent }}</p>
+
+                        {% if budget_used < 70 %}
+                        <span class="badge bg-success">Safe</span>
+                        {% elif budget_used < 90 %}
+                        <span class="badge bg-warning text-dark">Near Limit</span>
+                        {% else %}
+                        <span class="badge bg-danger">Over Budget</span>
+                        {% endif %}
+                        {% else %}
+                        <div class="empty-box">
+                            <p>No budget set</p>
+                            <a href="/budget" class="btn btn-warning btn-sm">Set Budget</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- QUICK ACTIONS -->
+                <div class="card">
+                    <div class="card-body">
+                        <a href="{{ url_for('expense.add_expense') }}" class="btn btn-success w-100 mb-2">
+                            <i class="fas fa-plus me-2"></i>Add Expense
+                        </a>
+
+                        <a href="{{ url_for('expense.view_expenses') }}" class="btn btn-outline-primary w-100">
+                            View Expenses
+                        </a>
+                    </div>
+                </div>
+
+                <!-- ================= RECENT EXPENSES ================= -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h5>Recent Expenses</h5>
+
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Description</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if expenses %}
+                                {% for e in expenses %}
+                                <tr>
+                                    <td>{{ e.date }}</td>
+                                    <td>{{ e.category }}</td>
+                                    <td>{{ e.note }}</td>
+                                    <td class="text-end">₹{{ e.amount }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        No expenses yet<br>
+                                        <a href="{{ url_for('expense.add_expense') }}"
+                                           class="btn btn-outline-success btn-sm mt-2">
+                                            ➕ Add Expense
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ================= CHART JS ================= -->
+        {% if category_data %}
+        <script>
+            new Chart(document.getElementById("categoryChart"), {
+                type: "doughnut",
+                data: {
+                    labels: {{ category_labels | tojson }},
+                    datasets: [{
+                        data: {{ category_data | tojson }},
+                        backgroundColor: ["#dc3545", "#0d6efd", "#ffc107", "#20c997", "#6c757d"]
+                    }]
+                }
+            });
+        </script>
+        {% endif %}
+
+        {% if trend_data %}
+        <script>
+            new Chart(document.getElementById("trendChart"), {
+                type: "line",
+                data: {
+                    labels: {{ trend_labels | tojson }},
+                    datasets: [{
+                        data: {{ trend_data | tojson }},
+                        borderColor: "#198754",
+                        fill: false
+                    }]
+                }
+            });
+        </script>
+        {% endif %}
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
